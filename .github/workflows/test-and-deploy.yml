@@ -39,6 +39,7 @@ jobs:
 
       # todo: setup OIDC
       - name: configure aws credentials
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: 'arn:aws:iam::471112638649:role/admin' 
