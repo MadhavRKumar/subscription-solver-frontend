@@ -1,0 +1,51 @@
+#
+name: Run tests, Build, and Deploy to S3
+
+# Configures this workflow to run every time a change is pushed
+on: push
+
+
+env:
+  AWS_REGION: 'us-east-1'
+  S3_BUCKET_NAME: 'subscription-frontend20241030013259322900000001'
+
+# There is a single job in this workflow. It's configured to run on the latest available version of Ubuntu.
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: "npm run test:ci"
+
+      - name: Build
+        run: "npm run build"
+
+      # todo: setup OIDC
+      - name: configure aws credentials
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: 'arn:aws:iam::471112638649:role/admin' 
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Deploy to S3
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+        run: "aws s3 sync ./dist s3://${{ env.S3_BUCKET_NAME }} --delete"
+
